@@ -54,9 +54,9 @@ function doOptions(e) {
   return ContentService.createTextOutput()
     .setMimeType(ContentService.MimeType.TEXT)
     .setHeader('Access-Control-Allow-Origin', '*')
-    .setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
-    .setHeader('Access-Control-Allow-Headers', 'Content-Type')
-    .setHeader('Access-Control-Max-Age', '86400');
+    .setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+    .setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+    .setHeader('Access-Control-Max-Age', '3600');
 }
 
 /**
@@ -115,11 +115,13 @@ function doGet(e) {
       .setMimeType(ContentService.MimeType.JAVASCRIPT);
   } else {
     // JSON レスポンス + CORS ヘッダ
-    return ContentService.createTextOutput(json)
-      .setMimeType(ContentService.MimeType.JSON)
-      .setHeader('Access-Control-Allow-Origin', '*')
-      .setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-      .setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    const output = ContentService.createTextOutput(json);
+    output.setMimeType(ContentService.MimeType.JSON);
+    output.setHeader('Access-Control-Allow-Origin', '*');
+    output.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    output.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    output.setHeader('Access-Control-Max-Age', '3600');
+    return output;
   }
 }
 
@@ -169,20 +171,25 @@ function doPost(e) {
         result = { error: 'Unknown action: ' + action };
     }
     
-    return ContentService.createTextOutput(JSON.stringify(result))
-      .setMimeType(ContentService.MimeType.JSON)
-      .setHeader('Access-Control-Allow-Origin', '*')
-      .setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-      .setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    const output = ContentService.createTextOutput(JSON.stringify(result));
+    output.setMimeType(ContentService.MimeType.JSON);
+    output.setHeader('Access-Control-Allow-Origin', '*');
+    output.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    output.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    output.setHeader('Access-Control-Max-Age', '3600');
+    return output;
       
   } catch (error) {
     Logger.log('エラー発生: ' + error.message);
     Logger.log('スタックトレース: ' + error.stack);
-    return ContentService.createTextOutput(JSON.stringify({ error: error.message, stack: error.stack }))
-      .setMimeType(ContentService.MimeType.JSON)
-      .setHeader('Access-Control-Allow-Origin', '*')
-      .setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-      .setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    
+    const output = ContentService.createTextOutput(JSON.stringify({ error: error.message, stack: error.stack }));
+    output.setMimeType(ContentService.MimeType.JSON);
+    output.setHeader('Access-Control-Allow-Origin', '*');
+    output.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    output.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    output.setHeader('Access-Control-Max-Age', '3600');
+    return output;
   }
 }
 

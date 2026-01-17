@@ -1583,7 +1583,7 @@
                             runners: runnersJson
                         };
                         
-                        // mode: 'no-cors' を使用してCORS プリフライトを回避
+                        console.log('GASへPOST送信開始:', gasUrl.value);
                         const response = await fetch(gasUrl.value, {
                             method: 'POST',
                             mode: 'cors',
@@ -1593,6 +1593,8 @@
                             body: JSON.stringify(requestData)
                         });
 
+                        console.log('レスポンスステータス:', response.status);
+                        
                         if (!response.ok) {
                             throw new Error(`HTTP error! status: ${response.status}`);
                         }
