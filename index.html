@@ -240,17 +240,17 @@
             <!-- Tab Navigation -->
             <ul class="nav nav-tabs mb-4">
                 <li class="nav-item">
-                    <a class="nav-link" :class="{ active: currentTab === 'import' }" href="#" @click.prevent="currentTab = 'import'">
+                    <a class="nav-link" :class="{ active: currentTab === 'import' }" href="#" @click.prevent="switchTab('import')">
                         <i class="fas fa-file-import me-1"></i>データ登録・設定
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" :class="{ active: currentTab === 'plan' }" href="#" @click.prevent="currentTab = 'plan'">
+                    <a class="nav-link" :class="{ active: currentTab === 'plan' }" href="#" @click.prevent="switchTab('plan')">
                         <i class="fas fa-map me-1"></i>全体マップ
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" :class="{ active: currentTab === 'assign' }" href="#" @click.prevent="currentTab = 'assign'">
+                    <a class="nav-link" :class="{ active: currentTab === 'assign' }" href="#" @click.prevent="switchTab('assign')">
                         <i class="fas fa-tasks me-1"></i>詳細割り振り
                     </a>
                 </li>
@@ -449,11 +449,12 @@
                                             </button>
                                         </div>
                                     </div>
-                            </div>
+                                </div>
 
-                            <div class="text-muted text-center py-3" v-if="runners.length === 0">
-                                <i class="fas fa-user-plus mb-2"></i>
-                                <p class="mb-0 small">ランナーを追加してください</p>
+                                <div class="text-muted text-center py-3" v-if="runners.length === 0">
+                                    <i class="fas fa-user-plus mb-2"></i>
+                                    <p class="mb-0 small">ランナーを追加してください</p>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -524,6 +525,16 @@
 
                         <!-- エリア別サマリ -->
                         <div class="row">
+                            <!-- デバッグ情報 -->
+                            <div class="col-12 mb-3">
+                                <div class="alert alert-info">
+                                    <strong>デバッグ:</strong>
+                                    items: {{ items.length }}, 
+                                    runners: {{ runners.length }}, 
+                                    1日目キー: {{ Object.keys(hallCountsByDay['1日目'] || {}).join(', ') }}, 
+                                    2日目キー: {{ Object.keys(hallCountsByDay['2日目'] || {}).join(', ') }}
+                                </div>
+                            </div>
                             <!-- 1日目 -->
                             <div class="col-md-6">
                                 <div class="card mb-4">
@@ -888,7 +899,7 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
     <script>
-        const { createApp, ref, computed, onMounted, watch } = Vue;
+        const { createApp, ref, computed, onMounted, watch, nextTick } = Vue;
 
         createApp({
             setup() {
@@ -1014,6 +1025,26 @@
                     });
                     
                     return result;
+                });
+
+                // 1日目のホール情報（配列形式）
+                const day1Halls = computed(() => {
+                    const halls = hallCountsByDay.value['1日目'] || {};
+                    return Object.keys(halls).map(hall => ({
+                        hall,
+                        count: halls[hall].count,
+                        runners: halls[hall].runners
+                    }));
+                });
+
+                // 2日目のホール情報（配列形式）
+                const day2Halls = computed(() => {
+                    const halls = hallCountsByDay.value['2日目'] || {};
+                    return Object.keys(halls).map(hall => ({
+                        hall,
+                        count: halls[hall].count,
+                        runners: halls[hall].runners
+                    }));
                 });
 
                 // ホール別にグループ化（登録順を維持）
@@ -1507,13 +1538,19 @@
                         console.log('アイテム数:', itemCount);
                         console.log('ランナー数:', runnerCount);
                         console.log('現在のタブ:', currentTab.value);
+                        console.log('items.value:', items.value);
+                        console.log('runners.value:', runners.value);
                         
                         showToast(`読み込み完了: アイテム${itemCount}件、ランナー${runnerCount}名`, 'success');
                         
-                        // データがあれば詳細割り振りタブに切り替え
-                        if (itemCount > 0) {
-                            currentTab.value = 'assign';
-                            console.log('タブを assign に切り替え');
+                        // データがあれば適切なタブに切り替え
+                        if (itemCount > 0 || runnerCount > 0) {
+                            console.log('タブを plan に切り替え');
+                            // nextTickを使ってVueの更新サイクルを待つ
+                            nextTick(() => {
+                                currentTab.value = 'plan';
+                                console.log('タブ切り替え完了:', currentTab.value);
+                            });
                         }
                     } catch (error) {
                         console.error('Load error:', error);
@@ -1534,80 +1571,40 @@
                     loadingMessage.value = 'スプレッドシートへ保存中...';
 
                     try {
-                        // JSONP を使って CORS 回避
-                        const callbackName = 'callback_' + Math.random().toString(36).substr(2, 9);
+                        const itemsJson = items.value.map(({ selected, ...item }) => item);
+                        const runnersJson = runners.value;
                         
-                        const itemsJson = JSON.stringify(items.value.map(({ selected, ...item }) => item));
-                        const runnersJson = JSON.stringify(runners.value);
+                        console.log('保存するアイテム数:', itemsJson.length);
+                        console.log('保存するランナー数:', runnersJson.length);
                         
-                        console.log('保存するアイテム数:', items.value.length);
-                        console.log('保存するランナー数:', runners.value.length);
-                        console.log('JSONサイズ - Items:', itemsJson.length, 'Runners:', runnersJson.length);
+                        const requestData = {
+                            action: 'saveAll',
+                            items: itemsJson,
+                            runners: runnersJson
+                        };
                         
-                        const url = gasUrl.value + '?action=saveAll&callback=' + encodeURIComponent(callbackName) 
-                            + '&itemsJson=' + encodeURIComponent(itemsJson)
-                            + '&runnersJson=' + encodeURIComponent(runnersJson)
-                            + '&_t=' + Date.now();
-                        
-                        console.log('URL長:', url.length, '文字');
-                        
-                        // URL長チェック
-                        if (url.length > 8000) {
-                            throw new Error('URL長が長すぎます (' + url.length + '文字)。データを削減してください。');
-                        }
-                        
-                        let data;
-                        const jsonpPromise = new Promise((resolve, reject) => {
-                            const timeout = setTimeout(() => {
-                                if (window[callbackName]) {
-                                    delete window[callbackName];
-                                }
-                                const scriptEl = document.getElementById(callbackName);
-                                if (scriptEl) {
-                                    scriptEl.remove();
-                                }
-                                reject(new Error('Request timeout (60秒)'));
-                            }, 60000); // 60秒にタイムアウトを延長
-                            
-                            window[callbackName] = (response) => {
-                                clearTimeout(timeout);
-                                delete window[callbackName];
-                                console.log('JSONP レスポンス受信:', response);
-                                
-                                // スクリプトタグをクリーンアップ
-                                const scriptEl = document.getElementById(callbackName);
-                                if (scriptEl) {
-                                    setTimeout(() => scriptEl.remove(), 100);
-                                }
-                                
-                                resolve(response);
-                            };
-                            
-                            const script = document.createElement('script');
-                            script.id = callbackName;
-                            script.src = url;
-                            script.onerror = () => {
-                                clearTimeout(timeout);
-                                if (window[callbackName]) {
-                                    delete window[callbackName];
-                                }
-                                console.error('スクリプト読み込みエラー:', url);
-                                reject(new Error('Script load failed'));
-                            };
-                            script.onload = () => {
-                                console.log('スクリプト読み込み完了');
-                            };
-                            console.log('JSONP リクエスト送信:', url.substring(0, 100) + '...');
-                            document.head.appendChild(script);
+                        // mode: 'no-cors' を使用してCORS プリフライトを回避
+                        const response = await fetch(gasUrl.value, {
+                            method: 'POST',
+                            mode: 'cors',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(requestData)
                         });
-                        
-                        data = await jsonpPromise;
 
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+
+                        const data = await response.json();
+                        
+                        console.log('保存結果:', data);
+                        
                         if (data.error) {
                             throw new Error(data.error);
                         }
 
-                        console.log('保存結果:', data);
                         showToast('スプレッドシートへ保存しました', 'success');
                     } catch (error) {
                         console.error('Save error:', error);
@@ -1617,15 +1614,26 @@
                     }
                 };
 
-                // Watch for changes
+                // Watch for changes (デバウンス付き)
+                let saveTimeout = null;
                 watch([items, runners], () => {
-                    saveToLocalStorage();
+                    if (saveTimeout) clearTimeout(saveTimeout);
+                    saveTimeout = setTimeout(() => {
+                        saveToLocalStorage();
+                    }, 500);
                 }, { deep: true });
 
                 // Initialize
                 onMounted(() => {
                     loadFromLocalStorage();
+                    console.log('Vue mounted. currentTab:', currentTab.value, 'items:', items.value.length, 'runners:', runners.value.length);
                 });
+
+                // タブ切り替えメソッド
+                const switchTab = (tabName) => {
+                    console.log('タブ切り替え:', currentTab.value, '->', tabName);
+                    currentTab.value = tabName;
+                };
 
                 return {
                     // State
@@ -1692,7 +1700,8 @@
                     clearSelection,
                     saveSettings,
                     loadFromSheet,
-                    saveToSheet
+                    saveToSheet,
+                    switchTab
                 };
             }
         }).mount('#app');
