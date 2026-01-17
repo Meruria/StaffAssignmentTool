@@ -1534,38 +1534,80 @@
                     loadingMessage.value = 'スプレッドシートへ保存中...';
 
                     try {
-                        const itemsJson = items.value.map(({ selected, ...item }) => item);
-                        const runnersJson = runners.value;
+                        // JSONP を使って CORS 回避
+                        const callbackName = 'callback_' + Math.random().toString(36).substr(2, 9);
                         
-                        console.log('保存するアイテム数:', itemsJson.length);
-                        console.log('保存するランナー数:', runnersJson.length);
+                        const itemsJson = JSON.stringify(items.value.map(({ selected, ...item }) => item));
+                        const runnersJson = JSON.stringify(runners.value);
                         
-                        const requestData = {
-                            action: 'saveAll',
-                            items: itemsJson,
-                            runners: runnersJson
-                        };
+                        console.log('保存するアイテム数:', items.value.length);
+                        console.log('保存するランナー数:', runners.value.length);
+                        console.log('JSONサイズ - Items:', itemsJson.length, 'Runners:', runnersJson.length);
                         
-                        const response = await fetch(gasUrl.value, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify(requestData)
-                        });
-
-                        if (!response.ok) {
-                            throw new Error(`HTTP error! status: ${response.status}`);
+                        const url = gasUrl.value + '?action=saveAll&callback=' + encodeURIComponent(callbackName) 
+                            + '&itemsJson=' + encodeURIComponent(itemsJson)
+                            + '&runnersJson=' + encodeURIComponent(runnersJson)
+                            + '&_t=' + Date.now();
+                        
+                        console.log('URL長:', url.length, '文字');
+                        
+                        // URL長チェック
+                        if (url.length > 8000) {
+                            throw new Error('URL長が長すぎます (' + url.length + '文字)。データを削減してください。');
                         }
+                        
+                        let data;
+                        const jsonpPromise = new Promise((resolve, reject) => {
+                            const timeout = setTimeout(() => {
+                                if (window[callbackName]) {
+                                    delete window[callbackName];
+                                }
+                                const scriptEl = document.getElementById(callbackName);
+                                if (scriptEl) {
+                                    scriptEl.remove();
+                                }
+                                reject(new Error('Request timeout (60秒)'));
+                            }, 60000); // 60秒にタイムアウトを延長
+                            
+                            window[callbackName] = (response) => {
+                                clearTimeout(timeout);
+                                delete window[callbackName];
+                                console.log('JSONP レスポンス受信:', response);
+                                
+                                // スクリプトタグをクリーンアップ
+                                const scriptEl = document.getElementById(callbackName);
+                                if (scriptEl) {
+                                    setTimeout(() => scriptEl.remove(), 100);
+                                }
+                                
+                                resolve(response);
+                            };
+                            
+                            const script = document.createElement('script');
+                            script.id = callbackName;
+                            script.src = url;
+                            script.onerror = () => {
+                                clearTimeout(timeout);
+                                if (window[callbackName]) {
+                                    delete window[callbackName];
+                                }
+                                console.error('スクリプト読み込みエラー:', url);
+                                reject(new Error('Script load failed'));
+                            };
+                            script.onload = () => {
+                                console.log('スクリプト読み込み完了');
+                            };
+                            console.log('JSONP リクエスト送信:', url.substring(0, 100) + '...');
+                            document.head.appendChild(script);
+                        });
+                        
+                        data = await jsonpPromise;
 
-                        const data = await response.json();
-                        
-                        console.log('保存結果:', data);
-                        
                         if (data.error) {
                             throw new Error(data.error);
                         }
 
+                        console.log('保存結果:', data);
                         showToast('スプレッドシートへ保存しました', 'success');
                     } catch (error) {
                         console.error('Save error:', error);
