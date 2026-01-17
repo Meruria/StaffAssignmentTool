@@ -61,9 +61,11 @@ function doOptions(e) {
 
 /**
  * HTTP GETリクエストのハンドラ
+ * JSONP対応: ?callback=funcName で JSONP レスポンスを返す
  */
 function doGet(e) {
   const action = e.parameter.action || 'getAll';
+  const callback = e.parameter.callback; // JSONP callback 関数名
   let result;
   
   try {
@@ -73,6 +75,17 @@ function doGet(e) {
         break;
       case 'getRunners':
         result = getRunners();
+        break;
+      case 'saveAll':
+        // GET でデータを受け取って保存（JSONP 用）
+        const itemsJson = e.parameter.itemsJson || '[]';
+        const runnersJson = e.parameter.runnersJson || '[]';
+        const items = JSON.parse(itemsJson);
+        const runners = JSON.parse(runnersJson);
+        result = {
+          items: saveItems(items),
+          runners: saveRunners(runners)
+        };
         break;
       case 'getAll':
       default:
@@ -86,11 +99,21 @@ function doGet(e) {
     result = { error: error.message };
   }
   
-  return ContentService.createTextOutput(JSON.stringify(result))
-    .setMimeType(ContentService.MimeType.JSON)
-    .setHeader('Access-Control-Allow-Origin', '*')
-    .setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-    .setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  // JSONP か JSON か判定
+  const json = JSON.stringify(result);
+  
+  if (callback) {
+    // JSONP レスポンス（CORS 不要）
+    return ContentService.createTextOutput(callback + '(' + json + ')')
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  } else {
+    // JSON レスポンス + CORS ヘッダ
+    return ContentService.createTextOutput(json)
+      .setMimeType(ContentService.MimeType.JSON)
+      .setHeader('Access-Control-Allow-Origin', '*')
+      .setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+      .setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  }
 }
 
 /**
