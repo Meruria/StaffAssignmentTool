@@ -128,9 +128,14 @@ function doGet(e) {
  */
 function doPost(e) {
   try {
+    Logger.log('POSTリクエスト受信');
+    Logger.log('リクエストボディサイズ: ' + e.postData.contents.length + ' bytes');
+    
     const data = JSON.parse(e.postData.contents);
     const action = data.action;
     let result;
+    
+    Logger.log('アクション: ' + action);
     
     switch (action) {
       case 'saveItems':
@@ -140,10 +145,16 @@ function doPost(e) {
         result = saveRunners(data.runners);
         break;
       case 'saveAll':
+        Logger.log('saveAll アクション実行中...');
+        Logger.log('アイテム数: ' + (data.items ? data.items.length : 0));
+        Logger.log('ランナー数: ' + (data.runners ? data.runners.length : 0));
+        
         result = {
           items: saveItems(data.items || []),
           runners: saveRunners(data.runners || [])
         };
+        
+        Logger.log('saveAll 完了');
         break;
       case 'updateItemAssignment':
         result = updateItemAssignment(data.id, data.assignee, data.completed);
@@ -155,7 +166,7 @@ function doPost(e) {
         result = deleteRunner(data.name);
         break;
       default:
-        result = { error: 'Unknown action' };
+        result = { error: 'Unknown action: ' + action };
     }
     
     return ContentService.createTextOutput(JSON.stringify(result))
@@ -165,7 +176,9 @@ function doPost(e) {
       .setHeader('Access-Control-Allow-Headers', 'Content-Type');
       
   } catch (error) {
-    return ContentService.createTextOutput(JSON.stringify({ error: error.message }))
+    Logger.log('エラー発生: ' + error.message);
+    Logger.log('スタックトレース: ' + error.stack);
+    return ContentService.createTextOutput(JSON.stringify({ error: error.message, stack: error.stack }))
       .setMimeType(ContentService.MimeType.JSON)
       .setHeader('Access-Control-Allow-Origin', '*')
       .setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')

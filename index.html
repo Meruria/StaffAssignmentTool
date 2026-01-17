@@ -1534,60 +1534,38 @@
                     loadingMessage.value = 'スプレッドシートへ保存中...';
 
                     try {
-                        // JSONP でセーブも実行（callback 付きで CORS 回避）
-                        const callbackName = 'callback_' + Math.random().toString(36).substr(2, 9);
+                        const itemsJson = items.value.map(({ selected, ...item }) => item);
+                        const runnersJson = runners.value;
                         
-                        const itemsJson = JSON.stringify(items.value.map(({ selected, ...item }) => item));
-                        const runnersJson = JSON.stringify(runners.value);
+                        console.log('保存するアイテム数:', itemsJson.length);
+                        console.log('保存するランナー数:', runnersJson.length);
                         
-                        console.log('保存するアイテム数:', items.value.length);
-                        console.log('保存するランナー数:', runners.value.length);
+                        const requestData = {
+                            action: 'saveAll',
+                            items: itemsJson,
+                            runners: runnersJson
+                        };
                         
-                        const url = gasUrl.value + '?action=saveAll&callback=' + encodeURIComponent(callbackName) 
-                            + '&itemsJson=' + encodeURIComponent(itemsJson)
-                            + '&runnersJson=' + encodeURIComponent(runnersJson)
-                            + '&_t=' + Date.now();
-                        
-                        // URL長の警告
-                        if (url.length > 2000) {
-                            console.warn('URL長が長すぎる可能性があります:', url.length, '文字');
-                            showToast('データ量が多いため、保存に時間がかかる場合があります', 'warning');
-                        }
-                        
-                        let data;
-                        const jsonpPromise = new Promise((resolve, reject) => {
-                            const timeout = setTimeout(() => {
-                                delete window[callbackName];
-                                reject(new Error('Request timeout'));
-                            }, 30000); // 30秒にタイムアウトを延長
-                            
-                            window[callbackName] = (response) => {
-                                clearTimeout(timeout);
-                                delete window[callbackName];
-                                resolve(response);
-                            };
-                            
-                            const script = document.createElement('script');
-                            script.src = url;
-                            script.onerror = () => {
-                                clearTimeout(timeout);
-                                delete window[callbackName];
-                                reject(new Error('Save request failed'));
-                            };
-                            script.onload = () => {
-                                // スクリプトタグをクリーンアップ
-                                setTimeout(() => script.remove(), 100);
-                            };
-                            document.head.appendChild(script);
+                        const response = await fetch(gasUrl.value, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(requestData)
                         });
-                        
-                        data = await jsonpPromise;
 
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+
+                        const data = await response.json();
+                        
+                        console.log('保存結果:', data);
+                        
                         if (data.error) {
                             throw new Error(data.error);
                         }
 
-                        console.log('保存結果:', data);
                         showToast('スプレッドシートへ保存しました', 'success');
                     } catch (error) {
                         console.error('Save error:', error);
