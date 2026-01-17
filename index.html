@@ -220,6 +220,9 @@
                     コミケ買い物リスト・担当割り振りツール
                 </span>
                 <div class="d-flex gap-2">
+                    <span class="badge bg-light text-dark me-2" style="font-size: 0.8rem;">
+                        アイテム: {{ items.length }}件 | ランナー: {{ runners.length }}名
+                    </span>
                     <button class="btn btn-outline-light btn-sm" @click="loadFromSheet" :disabled="!gasUrl">
                         <i class="fas fa-cloud-download-alt me-1"></i>読込
                     </button>
@@ -476,6 +479,12 @@
                                             </tr>
                                         </thead>
                                         <tbody>
+                                            <tr v-if="runners.length === 0">
+                                                <td colspan="3" class="text-center text-muted py-4">
+                                                    <i class="fas fa-users fa-3x mb-3 d-block"></i>
+                                                    <p>ランナーが登録されていません。<br>「データ登録・設定」タブでランナーを追加してください。</p>
+                                                </td>
+                                            </tr>
                                             <tr v-for="runner in runners" :key="runner.name">
                                                 <td>
                                                     <span class="runner-badge" :style="{ backgroundColor: runner.color, color: getContrastColor(runner.color) }">
@@ -543,7 +552,11 @@
                                                 </div>
                                             </div>
                                             <div v-if="Object.keys(hallCountsByDay['1日目'] || {}).length === 0" class="col-12">
-                                                <p class="text-muted text-center mb-0">1日目のデータがありません</p>
+                                                <div class="text-center text-muted py-4">
+                                                    <i class="fas fa-calendar-times fa-2x mb-2 d-block"></i>
+                                                    <p class="mb-0">1日目のデータがありません</p>
+                                                    <p class="small">買い物リストに「1日目」のデータを登録してください</p>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -577,7 +590,11 @@
                                                 </div>
                                             </div>
                                             <div v-if="Object.keys(hallCountsByDay['2日目'] || {}).length === 0" class="col-12">
-                                                <p class="text-muted text-center mb-0">2日目のデータがありません</p>
+                                                <div class="text-center text-muted py-4">
+                                                    <i class="fas fa-calendar-times fa-2x mb-2 d-block"></i>
+                                                    <p class="mb-0">2日目のデータがありません</p>
+                                                    <p class="small">買い物リストに「2日目」のデータを登録してください</p>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -671,6 +688,19 @@
                                             </tr>
                                         </thead>
                                         <tbody>
+                                            <tr v-if="items.length === 0">
+                                                <td colspan="10" class="text-center text-muted py-5">
+                                                    <i class="fas fa-inbox fa-3x mb-3 d-block"></i>
+                                                    <p class="mb-2">買い物リストが登録されていません。</p>
+                                                    <p class="small">「データ登録・設定」タブでデータを登録するか、<br>「読込」ボタンでスプレッドシートから読み込んでください。</p>
+                                                </td>
+                                            </tr>
+                                            <tr v-else-if="filteredItems.length === 0">
+                                                <td colspan="10" class="text-center text-muted py-4">
+                                                    <i class="fas fa-filter fa-2x mb-2 d-block"></i>
+                                                    <p>フィルタ条件に一致するアイテムがありません。</p>
+                                                </td>
+                                            </tr>
                                             <tr 
                                                 v-for="item in filteredItems" 
                                                 :key="item.id" 
@@ -1445,6 +1475,12 @@
                                 selected: false
                             }));
                             console.log('アイテム読み込み完了:', items.value.length + '件', items.value);
+                            
+                            // デバッグ: 日付とホールの一覧を表示
+                            const dates = [...new Set(items.value.map(i => i.date))];
+                            const halls = [...new Set(items.value.map(i => i.hall))];
+                            console.log('日付一覧:', dates);
+                            console.log('ホール一覧:', halls);
                         } else {
                             console.warn('アイテムデータが不正です:', data.items);
                         }
@@ -1466,11 +1502,18 @@
                         
                         const itemCount = items.value.length;
                         const runnerCount = runners.value.length;
+                        
+                        console.log('=== 読み込み完了サマリ ===');
+                        console.log('アイテム数:', itemCount);
+                        console.log('ランナー数:', runnerCount);
+                        console.log('現在のタブ:', currentTab.value);
+                        
                         showToast(`読み込み完了: アイテム${itemCount}件、ランナー${runnerCount}名`, 'success');
                         
                         // データがあれば詳細割り振りタブに切り替え
                         if (itemCount > 0) {
                             currentTab.value = 'assign';
+                            console.log('タブを assign に切り替え');
                         }
                     } catch (error) {
                         console.error('Load error:', error);
