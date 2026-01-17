@@ -80,8 +80,13 @@ function doGet(e) {
         // GET でデータを受け取って保存（JSONP 用）
         const itemsJson = e.parameter.itemsJson || '[]';
         const runnersJson = e.parameter.runnersJson || '[]';
+        
+        Logger.log('保存リクエスト受信 - Items JSON length: ' + itemsJson.length);
+        Logger.log('保存リクエスト受信 - Runners JSON length: ' + runnersJson.length);
+        
         const items = JSON.parse(itemsJson);
         const runners = JSON.parse(runnersJson);
+        
         result = {
           items: saveItems(items),
           runners: saveRunners(runners)
@@ -96,7 +101,9 @@ function doGet(e) {
         break;
     }
   } catch (error) {
-    result = { error: error.message };
+    Logger.log('エラー発生: ' + error.message);
+    Logger.log('スタックトレース: ' + error.stack);
+    result = { error: error.message, stack: error.stack };
   }
   
   // JSONP か JSON か判定
@@ -165,8 +172,6 @@ function doPost(e) {
       .setHeader('Access-Control-Allow-Headers', 'Content-Type');
   }
 }
-
-/**
 
 /**
  * 買い物リストを取得
@@ -342,9 +347,9 @@ function updateItemAssignment(id, assignee, completed) {
   
   for (let i = 1; i < data.length; i++) {
     if (data[i][0] === id) {
-      sheet.getRange(i + 1, 9).setValue(assignee || ''); // 担当者
+      sheet.getRange(i + 1, 13).setValue(assignee || ''); // 担当者（13列目）
       if (completed !== undefined) {
-        sheet.getRange(i + 1, 10).setValue(completed); // 完了フラグ
+        sheet.getRange(i + 1, 14).setValue(completed); // 完了フラグ（14列目）
       }
       return { success: true };
     }

@@ -1263,7 +1263,7 @@
                         showToast('名前を入力してください', 'warning');
                         return;
                     }
-                    if (runners.value.find(r => r.name === newRunnerName.value)) {
+                    if (runners.value.find(r => r.name === newRunnerName.value.trim())) {
                         showToast('同じ名前のランナーが既に存在します', 'warning');
                         return;
                     }
@@ -1274,6 +1274,7 @@
                         day2Hall: ''
                     });
                     newRunnerName.value = '';
+                    newRunnerColor.value = '#90EE90';
                     saveToLocalStorage();
                     showToast('ランナーを追加しました', 'success');
                 };
@@ -1288,6 +1289,7 @@
                             }
                         });
                         saveToLocalStorage();
+                        showToast(`${name}を削除しました`, 'info');
                     }
                 };
 
@@ -1324,31 +1326,43 @@
                     const savedItems = localStorage.getItem('comiket_items');
                     const savedRunners = localStorage.getItem('comiket_runners');
                     if (savedItems) {
-                        items.value = JSON.parse(savedItems).map(item => ({
-                            id: item.id || '',
-                            date: item.date || '',
-                            hall: item.hall || '',
-                            block: item.block || '',
-                            number: item.number || '',
-                            circleName: item.circleName || '',
-                            productInfo: item.productInfo || '',
-                            price: item.price || 0,
-                            genre: item.genre || '',
-                            isShutter: item.isShutter || false,
-                            totalCount: item.totalCount || 1,
-                            buyers: item.buyers || [],
-                            assignee: item.assignee || '',
-                            completed: item.completed || false,
-                            selected: false
-                        }));
+                        try {
+                            items.value = JSON.parse(savedItems).map(item => ({
+                                id: item.id || generateUUID(),
+                                date: item.date || '',
+                                hall: item.hall || '',
+                                block: item.block || '',
+                                number: item.number || '',
+                                circleName: item.circleName || '',
+                                productInfo: item.productInfo || '',
+                                price: item.price || 0,
+                                genre: item.genre || '',
+                                isShutter: item.isShutter || false,
+                                totalCount: item.totalCount || 1,
+                                buyers: Array.isArray(item.buyers) ? item.buyers : [],
+                                assignee: item.assignee || '',
+                                completed: item.completed || false,
+                                selected: false
+                            }));
+                            console.log('ローカルストレージから読み込み:', items.value.length + '件');
+                        } catch (e) {
+                            console.error('アイテムの読み込みエラー:', e);
+                            items.value = [];
+                        }
                     }
                     if (savedRunners) {
-                        runners.value = JSON.parse(savedRunners).map(runner => ({
-                            name: runner.name || '',
-                            color: runner.color || '#CCCCCC',
-                            day1Hall: runner.day1Hall || '',
-                            day2Hall: runner.day2Hall || ''
-                        }));
+                        try {
+                            runners.value = JSON.parse(savedRunners).map(runner => ({
+                                name: runner.name || '',
+                                color: runner.color || '#CCCCCC',
+                                day1Hall: runner.day1Hall || '',
+                                day2Hall: runner.day2Hall || ''
+                            }));
+                            console.log('ローカルストレージから読み込み:', runners.value.length + '名');
+                        } catch (e) {
+                            console.error('ランナーの読み込みエラー:', e);
+                            runners.value = [];
+                        }
                     }
                 };
 
@@ -1396,6 +1410,10 @@
                                 delete window[callbackName];
                                 reject(new Error('JSONP request failed'));
                             };
+                            script.onload = () => {
+                                // スクリプトタグをクリーンアップ
+                                setTimeout(() => script.remove(), 100);
+                            };
                             document.head.appendChild(script);
                         });
                         
@@ -1407,9 +1425,10 @@
 
                         console.log('読み込んだデータ:', data);
 
-                        if (data.items) {
+                        if (data.items && Array.isArray(data.items)) {
+                            console.log('受信したアイテム:', data.items);
                             items.value = data.items.map(item => ({
-                                id: item.id || '',
+                                id: item.id || generateUUID(),
                                 date: item.date || '',
                                 hall: item.hall || '',
                                 block: item.block || '',
@@ -1420,27 +1439,39 @@
                                 genre: item.genre || '',
                                 isShutter: item.isShutter || false,
                                 totalCount: item.totalCount || 1,
-                                buyers: item.buyers || [],
+                                buyers: Array.isArray(item.buyers) ? item.buyers : [],
                                 assignee: item.assignee || '',
                                 completed: item.completed || false,
                                 selected: false
                             }));
-                            console.log('アイテム読み込み完了:', items.value.length + '件');
+                            console.log('アイテム読み込み完了:', items.value.length + '件', items.value);
+                        } else {
+                            console.warn('アイテムデータが不正です:', data.items);
                         }
-                        if (data.runners) {
+                        
+                        if (data.runners && Array.isArray(data.runners)) {
+                            console.log('受信したランナー:', data.runners);
                             runners.value = data.runners.map(runner => ({
                                 name: runner.name || '',
                                 color: runner.color || '#CCCCCC',
                                 day1Hall: runner.day1Hall || '',
                                 day2Hall: runner.day2Hall || ''
                             }));
-                            console.log('ランナー読み込み完了:', runners.value.length + '名');
+                            console.log('ランナー読み込み完了:', runners.value.length + '名', runners.value);
+                        } else {
+                            console.warn('ランナーデータが不正です:', data.runners);
                         }
 
                         saveToLocalStorage();
-                        showToast('スプレッドシートから読み込みました', 'success');
-                        // 読み込み完了後に詳細割り振りタブに切り替え
-                        currentTab.value = 'assign';
+                        
+                        const itemCount = items.value.length;
+                        const runnerCount = runners.value.length;
+                        showToast(`読み込み完了: アイテム${itemCount}件、ランナー${runnerCount}名`, 'success');
+                        
+                        // データがあれば詳細割り振りタブに切り替え
+                        if (itemCount > 0) {
+                            currentTab.value = 'assign';
+                        }
                     } catch (error) {
                         console.error('Load error:', error);
                         showToast('読み込みに失敗しました: ' + error.message, 'danger');
@@ -1466,17 +1497,26 @@
                         const itemsJson = JSON.stringify(items.value.map(({ selected, ...item }) => item));
                         const runnersJson = JSON.stringify(runners.value);
                         
+                        console.log('保存するアイテム数:', items.value.length);
+                        console.log('保存するランナー数:', runners.value.length);
+                        
                         const url = gasUrl.value + '?action=saveAll&callback=' + encodeURIComponent(callbackName) 
                             + '&itemsJson=' + encodeURIComponent(itemsJson)
                             + '&runnersJson=' + encodeURIComponent(runnersJson)
                             + '&_t=' + Date.now();
+                        
+                        // URL長の警告
+                        if (url.length > 2000) {
+                            console.warn('URL長が長すぎる可能性があります:', url.length, '文字');
+                            showToast('データ量が多いため、保存に時間がかかる場合があります', 'warning');
+                        }
                         
                         let data;
                         const jsonpPromise = new Promise((resolve, reject) => {
                             const timeout = setTimeout(() => {
                                 delete window[callbackName];
                                 reject(new Error('Request timeout'));
-                            }, 10000);
+                            }, 30000); // 30秒にタイムアウトを延長
                             
                             window[callbackName] = (response) => {
                                 clearTimeout(timeout);
@@ -1491,6 +1531,10 @@
                                 delete window[callbackName];
                                 reject(new Error('Save request failed'));
                             };
+                            script.onload = () => {
+                                // スクリプトタグをクリーンアップ
+                                setTimeout(() => script.remove(), 100);
+                            };
                             document.head.appendChild(script);
                         });
                         
@@ -1500,6 +1544,7 @@
                             throw new Error(data.error);
                         }
 
+                        console.log('保存結果:', data);
                         showToast('スプレッドシートへ保存しました', 'success');
                     } catch (error) {
                         console.error('Save error:', error);
