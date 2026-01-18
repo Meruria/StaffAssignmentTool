@@ -127,13 +127,23 @@ function doGet(e) {
 
 /**
  * HTTP POSTリクエストのハンドラ (CORS対応版)
+ * mode: 'no-cors' + Content-Type: text/plain で CORS プリフライト回避
+ * 参考: https://i-say.net/note/1058/
  */
 function doPost(e) {
   try {
     Logger.log('POSTリクエスト受信');
+    Logger.log('Content-Type: ' + e.postData.type);
     Logger.log('リクエストボディサイズ: ' + e.postData.contents.length + ' bytes');
     
-    const data = JSON.parse(e.postData.contents);
+    // text/plain で送信されたリクエストボディを取得
+    let data;
+    if (e.postData.type === 'text/plain') {
+      data = JSON.parse(e.postData.contents);
+    } else {
+      data = JSON.parse(e.postData.contents);
+    }
+    
     const action = data.action;
     let result;
     
@@ -171,12 +181,13 @@ function doPost(e) {
         result = { error: 'Unknown action: ' + action };
     }
     
+    // no-cors モードでは CORS ヘッダーは見えないが、設定しておく
     const output = ContentService.createTextOutput(JSON.stringify(result));
-    output.setMimeType(ContentService.MimeType.JSON);
+    output.setMimeType(ContentService.MimeType.TEXT);
     output.setHeader('Access-Control-Allow-Origin', '*');
     output.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     output.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    output.setHeader('Access-Control-Max-Age', '3600');
+    // output.setHeader('Access-Control-Max-Age', '3600');
     return output;
       
   } catch (error) {
@@ -281,7 +292,7 @@ function getRunners() {
 }
 
 /**
- * 買い物リストを保存（全置換）
+ * 買い物リストを保存（全置換）- バッチ処理で高速化
  */
 function saveItems(items) {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
@@ -298,9 +309,9 @@ function saveItems(items) {
   sheet.appendRow(['ID', '日付', 'ホール', 'ブロック', '番号', 'サークル名', '商品情報', '価格', 'ジャンル', 'シャッター', '合計数', '購入者情報', '担当者', '完了フラグ']);
   sheet.getRange(1, 1, 1, 14).setFontWeight('bold');
   
-  // データを追加
-  items.forEach(item => {
-    sheet.appendRow([
+  // データを一度に追加（バッチ処理で高速化）
+  if (items.length > 0) {
+    const rows = items.map(item => [
       item.id,
       item.date,
       item.hall,
@@ -316,13 +327,15 @@ function saveItems(items) {
       item.assignee || '',
       item.completed || false
     ]);
-  });
+    sheet.getRange(2, 1, rows.length, 14).setValues(rows);
+  }
   
+  Logger.log('saveItems 完了: ' + items.length + '件を保存');
   return { success: true, count: items.length };
 }
 
 /**
- * ランナー一覧を保存（全置換）
+ * ランナー一覧を保存（全置換）- バッチ処理で高速化
  */
 function saveRunners(runners) {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
@@ -339,16 +352,18 @@ function saveRunners(runners) {
   sheet.appendRow(['名前', 'カラーコード', '1日目配置', '2日目配置']);
   sheet.getRange(1, 1, 1, 4).setFontWeight('bold');
   
-  // データを追加
-  runners.forEach(runner => {
-    sheet.appendRow([
+  // データを一度に追加（バッチ処理で高速化）
+  if (runners.length > 0) {
+    const rows = runners.map(runner => [
       runner.name,
       runner.color,
       runner.day1Hall || '',
       runner.day2Hall || ''
     ]);
-  });
+    sheet.getRange(2, 1, rows.length, 4).setValues(rows);
+  }
   
+  Logger.log('saveRunners 完了: ' + runners.length + '件を保存');
   return { success: true, count: runners.length };
 }
 
