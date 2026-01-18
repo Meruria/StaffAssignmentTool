@@ -89,6 +89,15 @@
             text-decoration: line-through;
         }
         
+        .item-row.cursor-pointer {
+            cursor: pointer;
+        }
+        
+        .item-row.cursor-pointer:hover {
+            background-color: #e0e7ff !important;
+            transform: scale(1.005);
+        }
+        
         .assignee-select {
             min-width: 120px;
             font-size: 0.9rem;
@@ -222,7 +231,7 @@
                 </span>
                 <div class="d-flex gap-2">
                     <span class="badge bg-light text-dark me-2" style="font-size: 0.8rem;">
-                        アイテム: {{ items.length }}件 | ランナー: {{ runners.length }}名
+                        アイテム: {{ items.length }}件 | メンバー: {{ runners.length }}名
                     </span>
                     <button class="btn btn-outline-light btn-sm" @click="loadFromSheet" :disabled="!gasUrl">
                         <i class="fas fa-cloud-download-alt me-1"></i>読込
@@ -307,18 +316,50 @@
                                 </div>
                                 <!-- グループ内のアイテム -->
                                 <table class="table table-sm table-hover mb-0">
+                                    <thead class="sticky-top" style="top: 0; z-index: 9;">
+                                        <tr class="bg-light">
+                                            <th style="width: 30px;"></th>
+                                            <th style="width: 70px;">配置</th>
+                                            <th style="width: 150px;">サークル名</th>
+                                            <th style="width: 60px; text-align: center; color: #d32f2f;"><strong>合計</strong></th>
+                                            <th style="width: 50px; text-align: center;">紅</th>
+                                            <th style="width: 50px; text-align: center;">満</th>
+                                            <th style="width: 50px; text-align: center;">伊</th>
+                                            <th style="width: 80px;">ジャンル</th>
+                                            <th>商品情報</th>
+                                            <th style="width: 80px;">価格</th>
+                                            <th style="width: 40px;"></th>
+                                        </tr>
+                                    </thead>
                                     <tbody>
                                         <tr v-for="item in group.items" :key="item.id">
-                                            <td style="width: 30px;"><span class="badge bg-danger" v-if="item.isShutter">シャ</span></td>
-                                            <td style="width: 70px;" class="fw-bold">{{ item.block }}{{ item.number }}</td>
-                                            <td style="width: 150px;">{{ item.circleName }}</td>
-                                            <td style="width: 80px;"><small class="text-muted">{{ item.genre }}</small></td>
-                                            <td><small>{{ truncateText(item.productInfo, 40) }}</small></td>
-                                            <td style="width: 80px;">{{ formatPrice(item.price) }}</td>
-                                            <td style="width: 100px;">
-                                                <span v-for="b in item.buyers" :key="b.name" class="badge bg-info me-1">{{ b.name }}:{{ b.count }}</span>
+                                            <td><span class="badge bg-danger" v-if="item.isShutter">シャ</span></td>
+                                            <td class="fw-bold">{{ item.block }}{{ item.number }}</td>
+                                            <td>{{ item.circleName }}</td>
+                                            <td style="text-align: center; color: #d32f2f;"><strong>
+                                                {{
+                                                    item.buyers.reduce((sum, b) => sum + b.count, 0)
+                                                }}
+                                            </strong></td>
+                                            <td style="text-align: center;">
+                                                <span v-for="b in item.buyers" :key="b.name">
+                                                    <span v-if="b.name === '紅'">{{ b.count }}</span>
+                                                </span>
                                             </td>
-                                            <td style="width: 40px;">
+                                            <td style="text-align: center;">
+                                                <span v-for="b in item.buyers" :key="b.name">
+                                                    <span v-if="b.name === '満'">{{ b.count }}</span>
+                                                </span>
+                                            </td>
+                                            <td style="text-align: center;">
+                                                <span v-for="b in item.buyers" :key="b.name">
+                                                    <span v-if="b.name === '伊'">{{ b.count }}</span>
+                                                </span>
+                                            </td>
+                                            <td><small class="text-muted">{{ item.genre }}</small></td>
+                                            <td><small>{{ truncateText(item.productInfo, 40) }}</small></td>
+                                            <td>{{ formatPrice(item.price) }}</td>
+                                            <td>
                                                 <button class="btn btn-outline-danger btn-sm py-0 px-1" @click="deleteItem(item.id)">
                                                     <i class="fas fa-times"></i>
                                                 </button>
@@ -337,11 +378,11 @@
                     </div>
                 </div>
 
-                <!-- ランナー設定 -->
+                <!-- メンバー設定 -->
                 <div class="col-lg-4">
                     <div class="card">
                         <div class="card-header">
-                            <i class="fas fa-users me-2"></i>ランナー設定
+                            <i class="fas fa-users me-2"></i>メンバー設定
                         </div>
                         <div class="card-body">
                             <div class="input-group mb-3">
@@ -424,7 +465,7 @@
                                         </div>
                                     </div>
                                     
-                                    <!-- ランナーごとのカラーパレット -->
+                                    <!-- メンバーごとのカラーパレット -->
                                     <div v-if="editingRunnerColor === runner.name" class="border rounded p-2 mb-2 bg-white">
                                         <div class="row g-1">
                                             <div v-for="color in colorPalette" :key="color" class="col-4 col-sm-3">
@@ -454,7 +495,7 @@
 
                                 <div class="text-muted text-center py-3" v-if="runners.length === 0">
                                     <i class="fas fa-user-plus mb-2"></i>
-                                    <p class="mb-0 small">ランナーを追加してください</p>
+                                    <p class="mb-0 small">メンバーを追加してください</p>
                                 </div>
                             </div>
                         </div>
@@ -484,7 +525,7 @@
                                             <tr v-if="runners.length === 0">
                                                 <td colspan="3" class="text-center text-muted py-4">
                                                     <i class="fas fa-users fa-3x mb-3 d-block"></i>
-                                                    <p>ランナーが登録されていません。<br>「データ登録・設定」タブでランナーを追加してください。</p>
+                                                    <p>メンバーが登録されていません。<br>「データ登録・設定」タブでメンバーを追加してください。</p>
                                                 </td>
                                             </tr>
                                             <tr v-for="runner in runners" :key="runner.name">
@@ -526,21 +567,12 @@
 
                         <!-- エリア別サマリ -->
                         <div class="row">
-                            <!-- デバッグ情報 -->
-                            <div class="col-12 mb-3">
-                                <div class="alert alert-info">
-                                    <strong>デバッグ:</strong>
-                                    items: {{ items.length }}, 
-                                    runners: {{ runners.length }}, 
-                                    1日目キー: {{ Object.keys(hallCountsByDay['1日目'] || {}).join(', ') }}, 
-                                    2日目キー: {{ Object.keys(hallCountsByDay['2日目'] || {}).join(', ') }}
-                                </div>
-                            </div>
                             <!-- 1日目 -->
                             <div class="col-md-6">
                                 <div class="card mb-4">
                                     <div class="card-header">
                                         <i class="fas fa-calendar-day me-2"></i>1日目 エリア別サークル数
+                                        <span class="ms-2 badge bg-secondary">{{ day1AssignedCount }}/{{ runners.length }}人設定済</span>
                                     </div>
                                     <div class="card-body">
                                         <div class="row">
@@ -557,6 +589,7 @@
                                                                 <span v-for="r in info.runners" :key="r" class="badge me-1" :style="{ backgroundColor: getRunnerColor(r), color: getContrastColor(getRunnerColor(r)) }">
                                                                     {{ r }}
                                                                 </span>
+                                                                <div class="small text-muted mt-1">{{ info.runners.length }}人</div>
                                                             </div>
                                                             <span v-else class="text-muted small">未割当</span>
                                                         </div>
@@ -579,6 +612,7 @@
                                 <div class="card mb-4">
                                     <div class="card-header">
                                         <i class="fas fa-calendar-day me-2"></i>2日目 エリア別サークル数
+                                        <span class="ms-2 badge bg-secondary">{{ day2AssignedCount }}/{{ runners.length }}人設定済</span>
                                     </div>
                                     <div class="card-body">
                                         <div class="row">
@@ -595,6 +629,7 @@
                                                                 <span v-for="r in info.runners" :key="r" class="badge me-1" :style="{ backgroundColor: getRunnerColor(r), color: getContrastColor(getRunnerColor(r)) }">
                                                                     {{ r }}
                                                                 </span>
+                                                                <div class="small text-muted mt-1">{{ info.runners.length }}人</div>
                                                             </div>
                                                             <span v-else class="text-muted small">未割当</span>
                                                         </div>
@@ -621,94 +656,233 @@
             <div v-show="currentTab === 'assign'">
                 <!-- フィルタ & サマリ -->
                 <div class="row mb-4">
-                    <div class="col-lg-8">
+                    <div class="col-lg-12">
                         <div class="card">
                             <div class="card-body">
-                                <div class="d-flex flex-wrap gap-2 align-items-center">
-                                    <span class="text-muted me-2">フィルタ:</span>
+                                <!-- 全表示ボタン -->
+                                <div class="mb-4">
                                     <button 
-                                        class="btn btn-sm hall-filter-btn"
-                                        :class="currentFilter === 'all' ? 'btn-primary active' : 'btn-outline-secondary'"
-                                        @click="currentFilter = 'all'"
-                                    >全表示</button>
-                                    <button 
-                                        v-for="hall in uniqueHalls" 
-                                        :key="hall"
-                                        class="btn btn-sm hall-filter-btn"
-                                        :class="currentFilter === hall ? 'btn-primary active' : 'btn-outline-secondary'"
-                                        @click="currentFilter = hall"
-                                    >{{ hall }}</button>
-                                    
-                                    <span class="text-muted ms-4 me-2">日程:</span>
-                                    <button 
-                                        class="btn btn-sm"
-                                        :class="dateFilter === 'all' ? 'btn-info active' : 'btn-outline-info'"
-                                        @click="dateFilter = 'all'"
-                                    >全日程</button>
-                                    <button 
-                                        v-for="date in uniqueDates" 
-                                        :key="date"
-                                        class="btn btn-sm"
-                                        :class="dateFilter === date ? 'btn-info active' : 'btn-outline-info'"
-                                        @click="dateFilter = date"
-                                    >{{ date }}</button>
+                                        class="btn btn-outline-secondary"
+                                        :class="dateFilter === 'all' && currentFilter === 'all' ? 'active' : ''"
+                                        @click="dateFilter = 'all'; currentFilter = 'all'; selectedRunner = null"
+                                    ><i class="fas fa-th me-2"></i>全表示</button>
+                                </div>
+
+                                <!-- 1日目フィルター（カード表示） -->
+                                <div v-if="uniqueDates.includes('1日目')" class="mb-4">
+                                    <div class="text-muted small fw-bold mb-3">1日目</div>
+                                    <div class="row g-3">
+                                        <div 
+                                            v-for="hall in uniqueHalls.filter(h => items.some(i => i.date === '1日目' && i.hall === h))" 
+                                            :key="hall"
+                                            class="col-lg-3 col-md-4 col-sm-6"
+                                        >
+                                            <div 
+                                                class="p-3 rounded cursor-pointer h-100"
+                                                :class="getHallClass(hall)"
+                                                :style="dateFilter === '1日目' && currentFilter === hall ? { opacity: 1, boxShadow: '0 0 0 3px rgba(0,0,0,0.2)' } : { opacity: 0.7 }"
+                                                @click="dateFilter = '1日目'; currentFilter = hall; selectedRunner = null"
+                                            >
+                                                <div class="d-flex justify-content-between align-items-start">
+                                                    <div>
+                                                        <h6 class="mb-1 fw-bold">{{ hall }}</h6>
+                                                        <span class="fs-5 fw-bold">
+                                                            {{ items.filter(i => i.date === '1日目' && i.hall === hall).length }}件
+                                                        </span>
+                                                    </div>
+                                                    <div v-if="dateFilter === '1日目' && currentFilter === hall">
+                                                        <i class="fas fa-check-circle" style="font-size: 1.5rem;"></i>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- 2日目フィルター（カード表示） -->
+                                <div v-if="uniqueDates.includes('2日目')" class="mb-4">
+                                    <div class="text-muted small fw-bold mb-3">2日目</div>
+                                    <div class="row g-3">
+                                        <div 
+                                            v-for="hall in uniqueHalls.filter(h => items.some(i => i.date === '2日目' && i.hall === h))" 
+                                            :key="hall"
+                                            class="col-lg-3 col-md-4 col-sm-6"
+                                        >
+                                            <div 
+                                                class="p-3 rounded cursor-pointer h-100"
+                                                :class="getHallClass(hall)"
+                                                :style="dateFilter === '2日目' && currentFilter === hall ? { opacity: 1, boxShadow: '0 0 0 3px rgba(0,0,0,0.2)' } : { opacity: 0.7 }"
+                                                @click="dateFilter = '2日目'; currentFilter = hall; selectedRunner = null"
+                                            >
+                                                <div class="d-flex justify-content-between align-items-start">
+                                                    <div>
+                                                        <h6 class="mb-1 fw-bold">{{ hall }}</h6>
+                                                        <span class="fs-5 fw-bold">
+                                                            {{ items.filter(i => i.date === '2日目' && i.hall === hall).length }}件
+                                                        </span>
+                                                    </div>
+                                                    <div v-if="dateFilter === '2日目' && currentFilter === hall">
+                                                        <i class="fas fa-check-circle" style="font-size: 1.5rem;"></i>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- サマリ統計 -->
+                                <div class="border-top pt-3 mt-3 d-flex justify-content-end gap-3">
+                                    <div class="text-center">
+                                        <div class="small text-muted">表示中</div>
+                                        <div class="fw-bold">{{ filteredItems.length }}件</div>
+                                    </div>
+                                    <div class="text-center">
+                                        <div class="small text-muted">合計金額</div>
+                                        <div class="fw-bold">{{ formatPrice(totalPrice) }}</div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    <div class="col-lg-4">
-                        <div class="card summary-card h-100">
-                            <div class="card-body d-flex justify-content-around align-items-center">
-                                <div class="text-center">
-                                    <div class="small opacity-75">表示中</div>
-                                    <div class="summary-value">{{ filteredItems.length }}</div>
-                                </div>
-                                <div class="text-center">
-                                    <div class="small opacity-75">未割当</div>
-                                    <div class="summary-value">{{ unassignedCount }}</div>
-                                </div>
-                                <div class="text-center">
-                                    <div class="small opacity-75">合計金額</div>
-                                    <div class="summary-value">{{ formatPrice(totalPrice) }}</div>
+                </div>
+                
+                <!-- 担当メンバーピックアップ（ホール選択時のみ表示） -->
+                <div class="row mb-4" v-if="currentFilter !== 'all' && filteredRunners.length > 0">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <i class="fas fa-tasks me-2"></i>担当者割り当て管理
+                            </div>
+                            <div class="card-body">
+                                <div class="row g-3">
+                                    <!-- 全ホール -->
+                                    <div 
+                                        v-for="hall in uniqueHalls" 
+                                        :key="hall"
+                                        class="col-lg-6 col-md-12"
+                                    >
+                                        <div class="p-3 rounded border-2 h-100 d-flex flex-column" :class="getHallClass(hall)" :style="draggedRunner ? { boxShadow: '0 0 10px rgba(0,123,255,0.5)' } : {}">
+                                            <div class="fw-bold mb-1">{{ hall }}
+                                                <span class="small text-muted mb-3">
+                                                    {{ items.filter(item => {
+                                                        const dateFilter2 = dateFilter === 'all' ? ['1日目', '2日目'] : [dateFilter];
+                                                        return item.hall === hall && dateFilter2.includes(item.date);
+                                                    }).length }}件
+                                                </span>
+                                            </div>
+                                            <div 
+                                                class="d-flex flex-wrap gap-1 p-2 rounded"
+                                                style="min-height: 40px; background-color: rgba(255,255,255,0.3);"
+                                                @dragover.prevent
+                                                @drop="dropRunnerToHall(hall)"
+                                            >
+                                                <span 
+                                                    v-for="runner in runners.filter(r => {
+                                                        const dateFilter2 = dateFilter === 'all' ? ['1日目', '2日目'] : [dateFilter];
+                                                        if (dateFilter2.includes('1日目') && r.day1Hall === hall) return true;
+                                                        if (dateFilter2.includes('2日目') && r.day2Hall === hall) return true;
+                                                        return false;
+                                                    })"
+                                                    :key="runner.name"
+                                                    class="badge cursor-move"
+                                                    draggable="true"
+                                                    :style="{ 
+                                                        backgroundColor: runner.color,
+                                                        color: getContrastColor(runner.color),
+                                                        cursor: 'grab',
+                                                        opacity: draggedRunner === runner ? 0.5 : 1
+                                                    }"
+                                                    @dragstart="draggedRunner = runner; dragSourceHall = hall"
+                                                    @dragend="draggedRunner = null"
+                                                >
+                                                    {{ runner.name }}
+                                                    <i class="fas fa-grip-vertical ms-1" style="opacity: 0.6;"></i>
+                                                </span>
+                                                <span v-if="runners.filter(r => {
+                                                    const dateFilter2 = dateFilter === 'all' ? ['1日目', '2日目'] : [dateFilter];
+                                                    if (dateFilter2.includes('1日目') && r.day1Hall === hall) return true;
+                                                    if (dateFilter2.includes('2日目') && r.day2Hall === hall) return true;
+                                                    return false;
+                                                }).length === 0" class="text-muted small">担当者なし</span>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- メインテーブル -->
-                <div class="row">
-                    <div class="col-lg-9">
+                <!-- 担当メンバーピックアップ（ホール選択時のみ表示） -->
+                <div class="row mb-4" v-if="currentFilter !== 'all' && filteredRunners.length > 0">
+                    <div class="col-12">
                         <div class="card">
+                            <div class="card-header">
+                                <i class="fas fa-users me-2"></i>{{ currentFilter }} 担当メンバー
+                                <span class="ms-2 text-muted small">クリックして登録モードを開始</span>
+                            </div>
+                            <div class="card-body">
+                                <div class="d-flex flex-wrap gap-2">
+                                    <button
+                                        v-for="runner in filteredRunners"
+                                        :key="runner.name"
+                                        class="btn btn-lg"
+                                        :class="selectedRunner === runner.name ? 'btn-primary' : 'btn-outline-primary'"
+                                        :style="selectedRunner === runner.name ? {} : { borderColor: runner.color, color: runner.color }"
+                                        @click="toggleRunnerSelection(runner.name)"
+                                    >
+                                        <i class="fas fa-user me-2"></i>{{ runner.name }}
+                                        <span v-if="selectedRunner === runner.name" class="ms-2">
+                                            <i class="fas fa-check-circle"></i>
+                                        </span>
+                                    </button>
+                                </div>
+                                <div class="mt-3 alert alert-info" v-if="selectedRunner">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    <strong>{{ selectedRunner }}</strong> の登録モード - 下のリストでサークルをクリックして担当者として登録
+                                    <button class="btn btn-sm btn-outline-info ms-3" @click="selectedRunner = null">
+                                        <i class="fas fa-times me-1"></i>登録モード解除
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- サークルリスト -->
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <i class="fas fa-list me-2"></i>サークルリスト ({{ filteredItems.length }}件)
+                            </div>
                             <div class="card-body p-0">
                                 <div class="table-responsive" style="max-height: 600px; overflow-y: auto;">
                                     <table class="table table-hover mb-0">
                                         <thead class="sticky-top">
                                             <tr>
-                                                <th style="width: 40px;">
-                                                    <input type="checkbox" class="form-check-input" v-model="selectAll" @change="toggleSelectAll">
-                                                </th>
-                                                <th style="width: 150px;">担当者</th>
-                                                <th>日付</th>
-                                                <th>ホール</th>
+                                                <th style="width: 250px;">担当者</th>
                                                 <th>配置</th>
                                                 <th>サークル名</th>
+                                                <th style="width: 60px; text-align: center; color: #d32f2f;"><strong>合計</strong></th>
+                                                <th style="width: 50px; text-align: center;">紅</th>
+                                                <th style="width: 50px; text-align: center;">満</th>
+                                                <th style="width: 50px; text-align: center;">伊</th>
                                                 <th>商品情報</th>
                                                 <th>価格</th>
-                                                <th>購入者</th>
                                                 <th style="width: 60px;">完了</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             <tr v-if="items.length === 0">
-                                                <td colspan="10" class="text-center text-muted py-5">
+                                                <td colspan="7" class="text-center text-muted py-5">
                                                     <i class="fas fa-inbox fa-3x mb-3 d-block"></i>
                                                     <p class="mb-2">買い物リストが登録されていません。</p>
                                                     <p class="small">「データ登録・設定」タブでデータを登録するか、<br>「読込」ボタンでスプレッドシートから読み込んでください。</p>
                                                 </td>
                                             </tr>
                                             <tr v-else-if="filteredItems.length === 0">
-                                                <td colspan="10" class="text-center text-muted py-4">
+                                                <td colspan="7" class="text-center text-muted py-4">
                                                     <i class="fas fa-filter fa-2x mb-2 d-block"></i>
                                                     <p>フィルタ条件に一致するアイテムがありません。</p>
                                                 </td>
@@ -717,101 +891,134 @@
                                                 v-for="item in filteredItems" 
                                                 :key="item.id" 
                                                 class="item-row"
-                                                :class="{ completed: item.completed }"
-                                                :style="getRowStyle(item)"
+                                                :class="{ completed: item.completed, 'cursor-pointer': selectedRunner }"
+                                                :style="getMultiRowStyle(item)"
+                                                @click="selectedRunner ? toggleAssignee(item, selectedRunner) : null"
                                             >
-                                                <td>
-                                                    <input type="checkbox" class="form-check-input" v-model="item.selected">
+                                                <td @click.stop>
+                                                    <div class="d-flex flex-wrap gap-1">
+                                                        <span 
+                                                            v-for="assignee in item.assignees" 
+                                                            :key="assignee"
+                                                            class="badge"
+                                                            :style="{ backgroundColor: getRunnerColor(assignee), color: getContrastColor(getRunnerColor(assignee)) }"
+                                                        >
+                                                            {{ assignee }}
+                                                            <i class="fas fa-times ms-1" style="cursor: pointer;" @click="removeAssignee(item, assignee)"></i>
+                                                        </span>
+                                                        <span v-if="!item.assignees || item.assignees.length === 0" class="text-muted small">未割当</span>
+                                                    </div>
                                                 </td>
-                                                <td>
-                                                    <select class="form-select form-select-sm assignee-select" v-model="item.assignee">
-                                                        <option value="">未割当</option>
-                                                        <option v-for="runner in runners" :key="runner.name" :value="runner.name">
-                                                            {{ runner.name }}
-                                                        </option>
-                                                    </select>
-                                                </td>
-                                                <td>{{ item.date }}</td>
-                                                <td><span class="badge bg-secondary">{{ item.hall }}</span></td>
                                                 <td>
                                                     <span class="badge bg-danger me-1" v-if="item.isShutter">シャ</span>
                                                     <span class="fw-bold">{{ item.block }}{{ item.number }}</span>
                                                 </td>
                                                 <td>{{ item.circleName }}</td>
-                                                <td class="small">
+                                                <td style="text-align: center; color: #d32f2f;"><strong>
+                                                    {{
+                                                        item.buyers.reduce((sum, b) => sum + b.count, 0)
+                                                    }}
+                                                </strong></td>
+                                                <td style="text-align: center;">
+                                                    <span v-for="b in item.buyers" :key="b.name">
+                                                        <span v-if="b.name === '紅'">{{ b.count }}</span>
+                                                    </span>
+                                                </td>
+                                                <td style="text-align: center;">
+                                                    <span v-for="b in item.buyers" :key="b.name">
+                                                        <span v-if="b.name === '満'">{{ b.count }}</span>
+                                                    </span>
+                                                </td>
+                                                <td style="text-align: center;">
+                                                    <span v-for="b in item.buyers" :key="b.name">
+                                                        <span v-if="b.name === '伊'">{{ b.count }}</span>
+                                                    </span>
+                                                </td>
+                                                <td class="small" :title="(item.genre ? '[' + item.genre + '] ' : '') + (item.productInfo || '')">
                                                     <span class="text-muted" v-if="item.genre">[{{ item.genre }}] </span>
-                                                    {{ truncateText(item.productInfo, 40) }}
+                                                    {{ item.productInfo }}
                                                 </td>
                                                 <td>{{ formatPrice(item.price) }}</td>
-                                                <td>
-                                                    <span v-for="b in item.buyers" :key="b.name" class="badge bg-info me-1">{{ b.name }}{{ b.count }}</span>
-                                                </td>
-                                                <td class="text-center">
+                                                <td class="text-center" @click.stop>
                                                     <input type="checkbox" class="form-check-input" v-model="item.completed">
                                                 </td>
                                             </tr>
                                         </tbody>
                                     </table>
-                                    <div class="text-center text-muted py-5" v-if="filteredItems.length === 0">
-                                        <i class="fas fa-filter fa-3x mb-3"></i>
-                                        <p>該当するデータがありません</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- 一括操作 -->
-                        <div class="card mt-3" v-if="selectedItems.length > 0">
-                            <div class="card-body">
-                                <div class="d-flex align-items-center gap-3">
-                                    <span class="text-muted">{{ selectedItems.length }}件選択中:</span>
-                                    <select class="form-select form-select-sm" style="width: 150px;" v-model="bulkAssignee">
-                                        <option value="">担当者を選択</option>
-                                        <option v-for="runner in runners" :key="runner.name" :value="runner.name">
-                                            {{ runner.name }}
-                                        </option>
-                                    </select>
-                                    <button class="btn btn-primary btn-sm" @click="bulkAssign" :disabled="!bulkAssignee">
-                                        <i class="fas fa-user-check me-1"></i>一括割当
-                                    </button>
-                                    <button class="btn btn-outline-secondary btn-sm" @click="clearSelection">
-                                        選択解除
-                                    </button>
                                 </div>
                             </div>
                         </div>
                     </div>
+                </div>
 
-                    <!-- サイドバー: 担当者別サマリ -->
-                    <div class="col-lg-3">
-                        <div class="card sticky-top" style="top: 20px;">
+                <!-- 担当者別サークル一覧 -->
+                <div class="row mt-4" v-if="filteredRunners.length > 0">
+                    <div class="col-12">
+                        <div class="card">
                             <div class="card-header">
-                                <i class="fas fa-chart-bar me-2"></i>担当者別集計
+                                <i class="fas fa-users me-2"></i>担当者別サークル一覧
                             </div>
                             <div class="card-body">
-                                <div v-for="runner in runners" :key="runner.name" class="mb-3 pb-3 border-bottom">
-                                    <div class="d-flex justify-content-between align-items-center mb-2">
-                                        <span class="runner-badge" :style="{ backgroundColor: runner.color, color: getContrastColor(runner.color) }">
-                                            {{ runner.name }}
-                                        </span>
-                                    </div>
-                                    <div class="row text-center">
-                                        <div class="col-6">
-                                            <div class="small text-muted">件数</div>
-                                            <div class="fs-5 fw-bold">{{ getRunnerStats(runner.name).count }}</div>
+                                <div class="row">
+                                    <div v-for="runner in filteredRunners" :key="runner.name" class="col-12 mb-4">
+                                        <div class="card h-100">
+                                            <div class="card-header" :style="{ backgroundColor: runner.color + '20', borderLeft: '4px solid ' + runner.color }">
+                                                <div class="d-flex justify-content-between align-items-center">
+                                                    <span class="fw-bold">{{ runner.name }}</span>
+                                                    <span class="badge" :style="{ backgroundColor: runner.color, color: getContrastColor(runner.color) }">
+                                                        {{ getRunnerAssignedItems(runner.name).length }}件
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div class="card-body p-0">
+                                                <div v-if="getRunnerAssignedItems(runner.name).length === 0" class="p-3 text-center text-muted">
+                                                    <i class="fas fa-inbox mb-2"></i>
+                                                    <p class="mb-0 small">割り当てなし</p>
+                                                </div>
+                                                <div v-else style="max-height: 400px; overflow-y: auto;">
+                                                    <table class="table table-sm table-hover mb-0">
+                                                        <thead class="sticky-top bg-white">
+                                                            <tr>
+                                                                <th>配置</th>
+                                                                <th>サークル名</th>
+                                                                <th style="width: 60px; text-align: center; color: #d32f2f;"><strong>合計</strong></th>
+                                                                <th>商品情報</th>
+                                                                <th>価格</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <tr 
+                                                                v-for="item in getRunnerAssignedItems(runner.name)" 
+                                                                :key="item.id"
+                                                                :class="{ 'opacity-50': item.completed }"
+                                                            >
+                                                                <td>
+                                                                    <span class="badge bg-danger me-1" v-if="item.isShutter">シャ</span>
+                                                                    <span class="fw-bold small">{{ item.block }}{{ item.number }}</span>
+                                                                </td>
+                                                                <td>{{ item.circleName }}</td>
+                                                                <td style="text-align: center; color: #d32f2f;"><strong>
+                                                                    {{
+                                                                        item.buyers.reduce((sum, b) => sum + b.count, 0)
+                                                                    }}
+                                                                </strong></td>
+                                                                <td class="small" :title="(item.genre ? '[' + item.genre + '] ' : '') + (item.productInfo || '')">
+                                                                    <span class="text-muted" v-if="item.genre">[{{ item.genre }}] </span>
+                                                                    {{ item.productInfo }}
+                                                                </td>
+                                                                <td>{{ formatPrice(item.price) }}</td>
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                                <div v-if="getRunnerAssignedItems(runner.name).length > 0" class="card-footer bg-light">
+                                                    <div class="d-flex justify-content-between small">
+                                                        <span>合計金額:</span>
+                                                        <span class="fw-bold">{{ formatPrice(getRunnerTotalPrice(runner.name)) }}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div class="col-6">
-                                            <div class="small text-muted">金額</div>
-                                            <div class="fs-6 fw-bold">{{ formatPrice(getRunnerStats(runner.name).total) }}</div>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <!-- 未割当 -->
-                                <div class="text-muted">
-                                    <div class="d-flex justify-content-between">
-                                        <span>未割当</span>
-                                        <span class="fw-bold">{{ unassignedCount }}件</span>
                                     </div>
                                 </div>
                             </div>
@@ -944,9 +1151,14 @@
                 const selectAll = ref(false);
                 const bulkAssignee = ref('');
                 
+                // 選択中のメンバー（登録モード用）
+                const selectedRunner = ref(null);
+                
                 // Drag and Drop
                 const draggedRunnerIndex = ref(-1);
                 const dragoverRunnerIndex = ref(-1);
+                const draggedRunner = ref(null);
+                const dragSourceHall = ref(null);
                 
                 // Hall Select Modal
                 const showHallModal = ref(false);
@@ -959,11 +1171,35 @@
                 });
 
                 const uniqueHalls = computed(() => {
-                    return [...new Set(items.value.map(i => i.hall).filter(h => h))];
+                    // ホール選択肢の順序に合わせて、データに存在するホールを固定順で返す
+                    const hallOrder = hallOptions.value;
+                    const existingHalls = new Set(items.value.map(i => i.hall).filter(h => h));
+                    const orderedHalls = hallOrder.filter(hall => existingHalls.has(hall));
+                    // ホール選択肢にはないが、データに存在するホールも含める（末尾に追加）
+                    const remainingHalls = Array.from(existingHalls).filter(h => !hallOrder.includes(h));
+                    return orderedHalls.concat(remainingHalls);
                 });
 
                 const uniqueDates = computed(() => {
                     return [...new Set(items.value.map(i => i.date).filter(d => d))];
+                });
+
+                // 現在のホール・日付でフィルターされた担当者
+                const filteredRunners = computed(() => {
+                    if (currentFilter.value === 'all') return [];
+                    
+                    const currentDate = dateFilter.value === 'all' ? null : dateFilter.value;
+                    
+                    return runners.value.filter(runner => {
+                        if (currentDate === '1日目') {
+                            return runner.day1Hall === currentFilter.value;
+                        } else if (currentDate === '2日目') {
+                            return runner.day2Hall === currentFilter.value;
+                        } else {
+                            // 日付指定なしの場合は両方のホールをチェック
+                            return runner.day1Hall === currentFilter.value || runner.day2Hall === currentFilter.value;
+                        }
+                    });
                 });
 
                 const filteredItems = computed(() => {
@@ -1046,6 +1282,15 @@
                         count: halls[hall].count,
                         runners: halls[hall].runners
                     }));
+                });
+
+                // 担当エリアが設定されている人数
+                const day1AssignedCount = computed(() => {
+                    return runners.value.filter(r => r.day1Hall).length;
+                });
+
+                const day2AssignedCount = computed(() => {
+                    return runners.value.filter(r => r.day2Hall).length;
                 });
 
                 // ホール別にグループ化（登録順を維持）
@@ -1194,17 +1439,42 @@
 
                 const dropRunner = (dropIndex) => {
                     if (draggedRunnerIndex.value !== -1 && draggedRunnerIndex.value !== dropIndex) {
-                        const draggedRunner = runners.value[draggedRunnerIndex.value];
+                        const draggedRunnerItem = runners.value[draggedRunnerIndex.value];
                         runners.value.splice(draggedRunnerIndex.value, 1);
                         
                         // ドロップ位置の調整
                         const newIndex = draggedRunnerIndex.value < dropIndex ? dropIndex - 1 : dropIndex;
-                        runners.value.splice(newIndex, 0, draggedRunner);
+                        runners.value.splice(newIndex, 0, draggedRunnerItem);
                         
                         saveToLocalStorage();
                     }
                     draggedRunnerIndex.value = -1;
                     dragoverRunnerIndex.value = -1;
+                };
+
+                // ホール間でメンバーをドラッグ＆ドロップで移動
+                const dropRunnerToHall = (targetHall) => {
+                    if (draggedRunner.value && dragSourceHall.value) {
+                        const runner = draggedRunner.value;
+                        
+                        // 現在のフィルタ条件から日程を判定
+                        if (dateFilter.value === '1日目') {
+                            runner.day1Hall = targetHall;
+                        } else if (dateFilter.value === '2日目') {
+                            runner.day2Hall = targetHall;
+                        } else {
+                            // 全日程の場合は、ソースホールが所属する日程を判定して更新
+                            if (runner.day1Hall === dragSourceHall.value) {
+                                runner.day1Hall = targetHall;
+                            } else if (runner.day2Hall === dragSourceHall.value) {
+                                runner.day2Hall = targetHall;
+                            }
+                        }
+                        
+                        draggedRunner.value = null;
+                        dragSourceHall.value = null;
+                        saveToLocalStorage();
+                    }
                 };
 
                 const getRunnerStats = (name) => {
@@ -1213,6 +1483,72 @@
                         count: runnerItems.length,
                         total: runnerItems.reduce((sum, i) => sum + (parseFloat(i.price) || 0), 0)
                     };
+                };
+
+                // 担当者に割り当てられたサークルを取得
+                const getRunnerAssignedItems = (runnerName) => {
+                    return filteredItems.value.filter(item => {
+                        return item.assignees && item.assignees.includes(runnerName);
+                    });
+                };
+
+                // 担当者の合計金額を取得
+                const getRunnerTotalPrice = (runnerName) => {
+                    const assignedItems = getRunnerAssignedItems(runnerName);
+                    return assignedItems.reduce((sum, item) => sum + (parseFloat(item.price) || 0), 0);
+                };
+
+                // メンバー選択トグル
+                const toggleRunnerSelection = (runnerName) => {
+                    if (selectedRunner.value === runnerName) {
+                        selectedRunner.value = null;
+                    } else {
+                        selectedRunner.value = runnerName;
+                    }
+                };
+
+                // 担当者の追加/削除をトグル
+                const toggleAssignee = (item, runnerName) => {
+                    if (!item.assignees) {
+                        item.assignees = [];
+                    }
+                    
+                    const index = item.assignees.indexOf(runnerName);
+                    if (index !== -1) {
+                        item.assignees.splice(index, 1);
+                        showToast(`${item.circleName} から ${runnerName} を削除しました`, 'info');
+                    } else {
+                        item.assignees.push(runnerName);
+                        showToast(`${item.circleName} に ${runnerName} を追加しました`, 'success');
+                    }
+                    
+                    saveToLocalStorage();
+                };
+
+                // 担当者を削除
+                const removeAssignee = (item, runnerName) => {
+                    if (!item.assignees) return;
+                    
+                    const index = item.assignees.indexOf(runnerName);
+                    if (index !== -1) {
+                        item.assignees.splice(index, 1);
+                        showToast(`${item.circleName} から ${runnerName} を削除しました`, 'info');
+                        saveToLocalStorage();
+                    }
+                };
+
+                // 複数担当者対応の行スタイル
+                const getMultiRowStyle = (item) => {
+                    if (!item.assignees || item.assignees.length === 0) {
+                        return {};
+                    }
+                    
+                    // 最初の担当者の色を使用
+                    const runner = runners.value.find(r => r.name === item.assignees[0]);
+                    if (runner) {
+                        return { backgroundColor: runner.color + '20' };
+                    }
+                    return {};
                 };
 
                 const parseData = () => {
@@ -1317,6 +1653,7 @@
                                 totalCount: parseInt(row[4]) || 1,
                                 buyers: buyers,
                                 assignee: '',
+                                assignees: [],
                                 completed: false,
                                 selected: false
                             });
@@ -1348,7 +1685,7 @@
                         return;
                     }
                     if (runners.value.find(r => r.name === newRunnerName.value.trim())) {
-                        showToast('同じ名前のランナーが既に存在します', 'warning');
+                        showToast('同じ名前のメンバーが既に存在します', 'warning');
                         return;
                     }
                     runners.value.push({
@@ -1360,7 +1697,7 @@
                     newRunnerName.value = '';
                     newRunnerColor.value = '#90EE90';
                     saveToLocalStorage();
-                    showToast('ランナーを追加しました', 'success');
+                    showToast('メンバーを追加しました', 'success');
                 };
 
                 const deleteRunner = (name) => {
@@ -1425,6 +1762,7 @@
                                 totalCount: item.totalCount || 1,
                                 buyers: Array.isArray(item.buyers) ? item.buyers : [],
                                 assignee: item.assignee || '',
+                                assignees: Array.isArray(item.assignees) ? item.assignees : (item.assignee ? [item.assignee] : []),
                                 completed: item.completed || false,
                                 selected: false
                             }));
@@ -1444,7 +1782,7 @@
                             }));
                             console.log('ローカルストレージから読み込み:', runners.value.length + '名');
                         } catch (e) {
-                            console.error('ランナーの読み込みエラー:', e);
+                            console.error('メンバーの読み込みエラー:', e);
                             runners.value = [];
                         }
                     }
@@ -1540,16 +1878,16 @@
                         }
                         
                         if (data.runners && Array.isArray(data.runners)) {
-                            console.log('受信したランナー:', data.runners);
+                            console.log('受信したメンバー:', data.runners);
                             runners.value = data.runners.map(runner => ({
                                 name: runner.name || '',
                                 color: runner.color || '#CCCCCC',
                                 day1Hall: runner.day1Hall || '',
                                 day2Hall: runner.day2Hall || ''
                             }));
-                            console.log('ランナー読み込み完了:', runners.value.length + '名', runners.value);
+                            console.log('メンバー読み込み完了:', runners.value.length + '名', runners.value);
                         } else {
-                            console.warn('ランナーデータが不正です:', data.runners);
+                            console.warn('メンバーデータが不正です:', data.runners);
                         }
 
                         saveToLocalStorage();
@@ -1559,12 +1897,12 @@
                         
                         console.log('=== 読み込み完了サマリ ===');
                         console.log('アイテム数:', itemCount);
-                        console.log('ランナー数:', runnerCount);
+                        console.log('メンバー数:', runnerCount);
                         console.log('現在のタブ:', currentTab.value);
                         console.log('items.value:', items.value);
                         console.log('runners.value:', runners.value);
                         
-                        showToast(`読み込み完了: アイテム${itemCount}件、ランナー${runnerCount}名`, 'success');
+                        showToast(`読み込み完了: アイテム${itemCount}件、メンバー${runnerCount}名`, 'success');
                         
                         // データがあれば適切なタブに切り替え
                         if (itemCount > 0 || runnerCount > 0) {
@@ -1598,7 +1936,7 @@
                         const runnersJson = runners.value;
                         
                         console.log('保存するアイテム数:', itemsJson.length);
-                        console.log('保存するランナー数:', runnersJson.length);
+                        console.log('保存するメンバー数:', runnersJson.length);
                         
                         const requestData = {
                             action: 'saveAll',
@@ -1673,6 +2011,8 @@
                     editingRunnerColor,
                     draggedRunnerIndex,
                     dragoverRunnerIndex,
+                    draggedRunner,
+                    dragSourceHall,
                     toasts,
                     gasUrl,
                     hallOptionsText,
@@ -1686,16 +2026,20 @@
                     dateFilter,
                     selectAll,
                     bulkAssignee,
+                    selectedRunner,
                     // Computed
                     hallOptions,
                     uniqueHalls,
                     uniqueDates,
+                    filteredRunners,
                     filteredItems,
                     selectedItems,
                     unassignedCount,
                     totalPrice,
                     hallCounts,
                     hallCountsByDay,
+                    day1AssignedCount,
+                    day2AssignedCount,
                     groupedItems,
                     // Methods
                     showToast,
@@ -1704,17 +2048,24 @@
                     truncateText,
                     getContrastColor,
                     getRowStyle,
+                    getMultiRowStyle,
                     getHallClass,
                     getHallBadgeClass,
                     getHallTextClass,
                     getRunnerColor,
                     toggleRunnerColorPalette,
+                    toggleRunnerSelection,
+                    toggleAssignee,
+                    removeAssignee,
                     openHallSelectModal,
                     selectHall,
                     getHallItemCount,
                     startDragRunner,
                     dropRunner,
+                    dropRunnerToHall,
                     getRunnerStats,
+                    getRunnerAssignedItems,
+                    getRunnerTotalPrice,
                     parseData,
                     deleteItem,
                     clearAllItems,
